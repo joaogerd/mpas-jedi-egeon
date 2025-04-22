@@ -17,7 +17,9 @@ Este repositório contém uma estrutura padronizada e automatizada para compilar
 │   ├── submit_jobs.sh          # Submissão dos jobs SLURM (invocado pelo script principal)
 │   ├── monitor_slurm_job.sh    # Monitoramento de jobs em tempo real (opcional)
 │   └── generate_html_index.sh  # Geração de índice HTML com logs por data
-└── sync_cmakelists.sh       # ✨ Sincroniza e adapta os CMakeLists.txt do mpas-bundle
+├── sync_cmakelists.sh          # ✨ Sincroniza e adapta os CMakeLists.txt do mpas-bundle
+└── cmake_versions/             # 📂 Armazena os CMakeLists.txt modificados por versão
+                                #     Ex: CMakeLists_3.0.0.txt, CMakeLists_3.0.1.txt
 ```
 
 ---
