@@ -1,14 +1,15 @@
 #!/bin/bash
 
-BUILD_DIR=$1
-SPACK_DIR=$2
-COMPILER=${3:-gnu}
-PRECISION=${4:-ON}
+SCRIPT_DIR=$1
+BUILD_DIR=$2
+SPACK_DIR=$3
+COMPILER=${4:-gnu}
+PRECISION=${5:-ON}
 
 mkdir -p logs
 
 echo "[INFO] Submetendo build_job.slurm..."
-BUILD_JOB_ID=$(sbatch --parsable build_job.slurm "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION")
+BUILD_JOB_ID=$(sbatch --parsable $SCRIPT_DIR/jobs/build_job.slurm "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION")
 
 if [ -z "$BUILD_JOB_ID" ]; then
   echo "[ERRO] Falha ao submeter o build_job.slurm"
@@ -30,4 +31,4 @@ elif [[ "$JOB_STATE" == "FAILED" || "$JOB_STATE" == "CANCELLED" ]]; then
 fi
 
 echo "[INFO] Submetendo ctest_job.slurm com dependência de sucesso no build..."
-sbatch --dependency=afterok:$BUILD_JOB_ID ctest_job.slurm "$BUILD_DIR" "$SPACK_DIR"
+sbatch --dependency=afterok:$BUILD_JOB_ID $SCRIPT_DIR/jobs/ctest_job.slurm "$BUILD_DIR" "$SPACK_DIR"

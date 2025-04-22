@@ -1,0 +1,18 @@
+# Ignore build files
+*.o
+*.mod
+*.a
+*.so
+*.exe
+
+# Ignore editor and system files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Ignore temporary files
+*.tmp
+*.bak
+*.log

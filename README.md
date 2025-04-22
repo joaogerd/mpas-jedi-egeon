@@ -1,22 +1,23 @@
-# 🧭 Sistema Automatizado de Compilação e Testes do MPAS-JEDI no Cluster Egeon
+# 🛍️ Sistema Automatizado de Compilacao e Testes do MPAS-JEDI no Cluster Egeon
 
 Este repositório contém uma estrutura padronizada e automatizada para compilar e testar o sistema **MPAS-JEDI** no cluster **Egeon**, utilizando o Spack-Stack 1.7.0 e o SLURM como sistema de filas.
 
 ---
 
-## 🗂️ Estrutura do Repositório
+## 📂 Estrutura do Repositório
 
 ```bash
 .
 ├── build_and_test.sh           # ✅ Script principal (ponto de entrada)
 ├── README.md                   # 📄 Este documento
-├── jobs/                       # 🧾 Scripts SLURM para submissão de jobs
+├── jobs/                       # 🗒 Scripts SLURM para submissão de jobs
 │   ├── build_job.slurm         # Compilação do MPAS-JEDI
 │   └── ctest_job.slurm         # Execução dos testes CTest
-└── lib/                        # ⚙️ Scripts auxiliares
-    ├── submit_jobs.sh          # Submissão dos jobs SLURM (invocado pelo script principal)
-    ├── monitor_slurm_job.sh    # Monitoramento de jobs em tempo real (opcional)
-    └── generate_html_index.sh  # Geração de índice HTML com logs por data
+├── lib/                        # ⚙️ Scripts auxiliares
+│   ├── submit_jobs.sh          # Submissão dos jobs SLURM (invocado pelo script principal)
+│   ├── monitor_slurm_job.sh    # Monitoramento de jobs em tempo real (opcional)
+│   └── generate_html_index.sh  # Geração de índice HTML com logs por data
+└── sync_cmakelists.sh       # ✨ Sincroniza e adapta os CMakeLists.txt do mpas-bundle
 ```
 
 ---
@@ -26,15 +27,22 @@ Este repositório contém uma estrutura padronizada e automatizada para compilar
 Execute **somente** o script principal:
 
 ```bash
-./build_and_test.sh
+./build_and_test.sh [VERSAO]
 ```
+
+**Argumentos:**
+- `VERSAO` (opcional): versão do `mpas-bundle` a ser utilizada.
+  - Exemplo: `./build_and_test.sh 3.0.2`
+  - Se omitido, será usada a versão padrão `3.0.0`.
 
 Este script irá:
 
-1. Clonar o repositório `mpas-bundle` (se necessário)
-2. Inicializar o ambiente Spack configurado no Egeon
-3. Executar `cmake` para baixar os pacotes necessários
-4. Submeter automaticamente os jobs de compilação e testes via SLURM
+1. Verificar se o arquivo `CMakeLists_<versao>.txt` está disponível na pasta `cmake_versions`
+2. Criar um diretório de build com base na versão e data atual
+3. Copiar o `CMakeLists_<versao>.txt` correspondente para o diretório de build
+4. Ativar o ambiente Spack configurado no Egeon
+5. Executar o `cmake` para configurar os pacotes
+6. Submeter automaticamente os jobs de compilação e testes via SLURM
 
 ---
 
@@ -45,7 +53,7 @@ Este script irá:
   /mnt/beegfs/das.group/spack-envs/mpas-bundle/start_spack_bundle.sh
   ```
 
-- Módulos recomendados para ativar antes de iniciar:
+- Módulos recomendados para carregar antes de iniciar:
   ```bash
   module load gnu9
   ```
@@ -90,7 +98,22 @@ Também são copiados para um diretório compartilhado:
 
 ---
 
-## 📜 Licença
+## 📜 Sobre o sync_cmakelists.sh
+
+O script `sync_cmakelists.sh` automatiza a coleta dos arquivos `CMakeLists.txt` das releases do repositório `mpas-bundle`, aplicando:
+
+- Substituição de `ecbuild_bundle(PROJECT ...)` por `ecbuild_add_bundle_ext(...)`
+- Remoção dos argumentos `UPDATE` e `NOREMOTE`
+- Inserção da macro `ecbuild_add_bundle_ext` com suporte a `MPAS_BUNDLE_NOREMOTE`
+
+Arquivos modificados ficam salvos em:
+```bash
+cmake_versions/CMakeLists_<versao>.txt
+```
+
+---
+
+## 📓 Licença
 
 Este projeto é licenciado sob os termos da **LGPL v3.0**.  
 Consulte o arquivo [LICENSE](./LICENSE) para mais detalhes.
@@ -109,4 +132,11 @@ Esse script garante a ativação completa do ambiente com módulos e variáveis 
 
 ---
 
-Para dúvidas ou contribuições, entre em contato com **João Gerd** ou abra uma *issue* neste repositório.
+## 📧 Contato
+
+Para dúvidas ou contribuições, entre em contato com **João Gerd**  
+Instituto Nacional de Pesquisas Espaciais (INPE)  
+📧 joao.gerd [at] inpe.br  
+➡️ ou abra uma [issue](https://github.com/joaogerd/mpas-jedi-egeon/issues) neste repositório.
+
+
