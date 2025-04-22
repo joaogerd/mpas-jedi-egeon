@@ -52,6 +52,9 @@ fi
 # ------------------------------------------------------------------------------
 BASE_DIR="$HOME/$ENV_NAME"
 BUILD_DIR="$BASE_DIR/build-${VERSION}-${SNAPSHOT_DATE}"
+TODAY=$(date +%Y-%m-%d)
+LOG_DIR="${BUILD_DIR}/logs/${TODAY}"
+
 mkdir -p "$BUILD_DIR"
 cp "$CMAKE_FILE" "$BUILD_DIR/CMakeLists.txt"
 
@@ -69,7 +72,12 @@ source "$SPACK_DIR/start_spack_bundle.sh"
 # ------------------------------------------------------------------------------
 echo "[INFO] Executando CMake com versão ${VERSION} e SNAPSHOT_DATE=${SNAPSHOT_DATE}"
 cmake . -DCMAKE_BUILD_TYPE=Release -DSNAPSHOT_DATE=${SNAPSHOT_DATE}
-
+cmake .. \
+  -DMPAS_DOUBLE_PRECISION=${PRECISION} \
+  -DMPAS_BUNDLE_NOREMOTE=ON \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_VERBOSE_MAKEFILE=ON \
+  | tee "$LOG_DIR/cmake_${JOBID}.log"
 # ------------------------------------------------------------------------------
 # 5. Submissão dos jobs SLURM com dependência entre build e test
 # ------------------------------------------------------------------------------

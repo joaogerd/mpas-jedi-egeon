@@ -63,17 +63,17 @@ gcc --version
 # -------------------------------
 cd "$BUILD_DIR"
 echo "[INFO] Executando CMake..."
-cmake .. \
-  -DMPAS_DOUBLE_PRECISION=${PRECISION} \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_VERBOSE_MAKEFILE=ON \
-  | tee "$LOG_DIR/cmake_${JOBID}.log"
+#cmake .. \
+#  -DMPAS_DOUBLE_PRECISION=${PRECISION} \
+#  -DCMAKE_BUILD_TYPE=Release \
+#  -DCMAKE_VERBOSE_MAKEFILE=ON \
+#  | tee "$LOG_DIR/cmake_${JOBID}.log"
 
 # -------------------------------
 # Compilação com Make
 # -------------------------------
 echo "[INFO] Compilando com make -j32..."
-make -j32 | tee "$LOG_DIR/make_${JOBID}.log"
+make -j$(nproc) | tee "$LOG_DIR/make_${JOBID}.log"
 
 # -------------------------------
 # Tempo total
