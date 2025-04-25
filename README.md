@@ -29,13 +29,35 @@ Este repositório contém uma estrutura padronizada e automatizada para compilar
 Execute **somente** o script principal:
 
 ```bash
-./build_and_test.sh [VERSAO]
+/bin/bash ./build_and_test.sh [-v <VERSION>] [-m <MODE>] [-p <ON|OFF>] [-h]
 ```
 
-**Argumentos:**
-- `VERSAO` (opcional): versão do `mpas-bundle` a ser utilizada.
-  - Exemplo: `./build_and_test.sh 3.0.2`
-  - Se omitido, será usada a versão padrão `3.0.0`.
+**Argumentos**
+
+- `-v <VERSAO>` (opcional): Define a tag ou branch da release do `mpas-bundle` a ser utilizada.  
+  **Padrão:** `3.0.0`
+
+- `-m <MODO>` (opcional): Modo de execução. Use `local` para rodar no nó de login ou `slurm` para submeter via SLURM.  
+  **Padrão:** `local`
+
+- `-p <PRECISAO>` (opcional): Define a precisão numérica da compilação. Use `ON` para precisão dupla ou `OFF` para precisão simples.  
+  **Padrão:** `ON`
+
+- `-h`: Exibe esta ajuda e encerra a execução.
+
+---
+
+**Exemplos de uso**
+
+- **Compilar a versão 3.0.1 utilizando SLURM:**
+  ```bash
+  ./build_and_test.sh -v 3.0.1 -m slurm
+  ```
+
+- **Compilar localmente com precisão simples (debug):**
+  ```bash
+  ./build_and_test.sh -p OFF
+  ```
 
 Este script irá:
 
