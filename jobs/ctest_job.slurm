@@ -1,66 +1,80 @@
-#!/bin/bash
-#SBATCH --job-name=ctest_mpas_jedi             # Nome do job
-#SBATCH --output=logs/ctest_mpas_%j.out        # Log padrão
-#SBATCH --error=logs/ctest_mpas_%j.err         # Log de erro
-#SBATCH --time=01:00:00                        # Tempo máximo
-#SBATCH --nodes=1                              # Nós computacionais
-#SBATCH --ntasks=16                            # Núcleos de CPU
-#SBATCH --partition=PESQ1                      # Partição
-#SBATCH --account=users                        # Conta SLURM
-#SBATCH --dependency=afterok:<BUILD_JOB_ID>    # Dependência de build
+#!/usr/bin/env bash
+#SBATCH --job-name=mpas_ctest
+#SBATCH --partition=PESQ1          # same partition as build
+#SBATCH --nodes=1
+#SBATCH --ntasks=32                # parallel test threads
+#SBATCH --time=01:00:00
+#SBATCH --output=logs/ctest_%j.out
+#SBATCH --error=logs/ctest_%j.err
 
-# =============================================================================
-# SLURM job script para rodar os testes do MPAS-JEDI usando CTest
-# Agrupa logs por data e envia automaticamente para diretório centralizado
-# =============================================================================
+###############################################################################
+# ctest_job.slurm – run MPAS-JEDI unit/integration tests
+# -----------------------------------------------------------------------------
+# Maintainer : João Gerd Zell de Mattos <joao.gerd@inpe.br>
+# Created    : 2025-04-?? (original version)
+# Last update: 2025-04-24
+#
+# PURPOSE
+# =======
+# Execute `ctest` inside an already compiled build tree.
+# Called by submit_jobs.sh with dependency `afterok:<build_job_id>`.
+#
+# USAGE (invoked via sbatch)
+#   sbatch ctest_job.slurm <BUILD_DIR> <SPACK_DIR>
+#
+# Positional args
+#   BUILD_DIR  – directory containing compiled mpas-bundle
+#   SPACK_DIR  – root of the Spack-Stack environment (contains start_spack_bundle.sh)
+#
+# OUTPUT
+# ------
+# * Logs
+#     logs/ctest_<jobid>.out – combined stdout
+#     logs/ctest_<jobid>.err – combined stderr
+#     <BUILD_DIR>/logs/<date>/ctest_<jobid>.log – raw test output
+#
+# EXIT CODES
+# ----------
+#  0  success
+#  1  missing dependencies or user error
+#  2  unexpected runtime failure
+###############################################################################
 
-set -euo pipefail
+set -Eeuo pipefail
+
+# ---------------- helper -----------------------------------------------------
+log() { printf '[%s] %s\n' "$(date +'%Y-%m-%d %H:%M:%S')" "$*"; }
+die() { printf '[%(%F %T)T] [ERROR] %s\n' -1 "$*" >&2; exit 1; }
+trap 'log "ERROR: line $LINENO – exiting."; exit 2' ERR
+
+# ---------------- args -------------------------------------------------------
+BUILD_DIR="${1:?BUILD_DIR missing}"
+SPACK_DIR="${2:?SPACK_DIR missing}"
+[[ -d "$BUILD_DIR" ]] || die "BUILD_DIR not found: $BUILD_DIR"
+[[ -d "$SPACK_DIR" ]] || die "SPACK_DIR not found: $SPACK_DIR"
+
+# ---------------- environment ------------------------------------------------
 SECONDS=0
+log "CTest job started on node $(hostname) at $(date '+%F %T')"
+log "BUILD_DIR = $BUILD_DIR"
 
-# -------------------------------
-# Argumentos recebidos via sbatch
-# -------------------------------
-BUILD_DIR=$1
-SPACK_DIR=$2
-
-echo "[INFO] Iniciando execução de CTest: $(date)"
-echo "[INFO] Diretório de build: $BUILD_DIR"
-echo "[INFO] Ambiente Spack: $SPACK_DIR"
-
-# Ativação do ambiente Spack
-echo "[INFO] Ativando ambiente Spack..."
 source "$SPACK_DIR/start_spack_bundle.sh"
 
-# -------------------------------
-# Diretórios e variáveis auxiliares
-# -------------------------------
-JOBID=${SLURM_JOB_ID:-manual}
-TODAY=$(date +%Y-%m-%d)
-LOG_DIR="${BUILD_DIR}/logs/${TODAY}"
-PUBLISH_DIR="/mnt/beegfs/$USER/relatorios/mpas-jedi/ctest/${TODAY}"
-
+TODAY=$(date +%F)
+LOG_DIR="$BUILD_DIR/logs/$TODAY"
 mkdir -p "$LOG_DIR"
-mkdir -p "$PUBLISH_DIR"
+JOB_ID="${SLURM_JOB_ID:-manual}"
 
-# -------------------------------
-# Executa os testes com CTest
-# -------------------------------
-LOGFILE="ctest_${JOBID}.log"
-cd "$BUILD_DIR/mpas-jedi"
+# ---------------- run tests --------------------------------------------------
+cd "$BUILD_DIR"
+THREADS=$(nproc)
+log "Running ctest with $THREADS parallel threads …"
+if ! ctest --output-on-failure -j"$THREADS" 2>&1 | tee "$LOG_DIR/ctest_${JOB_ID}.log"; then
+  die "CTest returned errors – check log."
+fi
 
-echo "[INFO] Executando CTest com saída paralela (16 threads)..."
-ctest --output-on-failure -j16 | tee "$LOG_DIR/$LOGFILE"
-
-# -------------------------------
-# Tempo total
-# -------------------------------
-DURATION=$SECONDS
-echo "[INFO] CTest finalizado: $(date)"
-echo "[INFO] Tempo total de execução: $((DURATION / 60)) min $((DURATION % 60)) s"
-
-# -------------------------------
-# Envia log para diretório de relatórios compartilhado
-# -------------------------------
-cp "$LOG_DIR/$LOGFILE" "$PUBLISH_DIR/"
-echo "[INFO] Log publicado em: $PUBLISH_DIR/$LOGFILE"
+# ---------------- epilogue ---------------------------------------------------
+DUR=$SECONDS
+log "CTest finished successfully in $((DUR/60)) min $((DUR%60)) s"
+log "Log saved at: $LOG_DIR/ctest_${JOB_ID}.log"
 

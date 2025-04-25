@@ -1,4 +1,20 @@
 #!/bin/bash
+# ==============================================================================
+# Nome: generate_html_index.sh
+#
+# Descrição:
+#   Gera um índice HTML navegável com links para logs de build e ctest
+#   armazenados em /mnt/beegfs/$USER/relatorios/mpas-jedi
+#
+# Uso:
+#   ./generate_html_index.sh
+#
+# Saída:
+#   - Cria o arquivo index.html com os logs por data e tipo
+#
+# Autor:
+#   João Gerd Zell de Mattos - 2025
+# ==============================================================================
 
 # Diretório base
 RELATORIO_DIR="/mnt/beegfs/$USER/relatorios/mpas-jedi"

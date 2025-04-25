@@ -115,10 +115,30 @@ cmake_versions/CMakeLists_<versao>.txt
 
 ---
 
+### 🛠️ Modos de Compilação
+
+Este sistema oferece suporte a dois modos de compilação do MPAS-JEDI:
+
+- `slurm`: Submete a compilação como job SLURM, ideal para builds pesados.
+- `local`: Executa a compilação diretamente no nó de login, com limitação automática de recursos (uso máximo de 10% da CPU e prioridade reduzida).
+
+> 📄 **Documentação completa**: veja [docs/build_modes.md](docs/build_modes.md)
+
+Para ativar o modo desejado, utilize o script `submit_jobs.sh` com o último argumento como `slurm` ou `local`.
+
+Exemplos:
+
+```bash
+./submit_jobs.sh . build-3.0.0 /mnt/beegfs/das.group/spack-envs/mpas-bundle gnu ON slurm
+./submit_jobs.sh . build-3.0.0 /mnt/beegfs/das.group/spack-envs/mpas-bundle gnu ON local
+```
+
+---
+
 ## 📓 Licença
 
 Este projeto é licenciado sob os termos da **LGPL v3.0**.  
-Consulte o arquivo [LICENSE](./LICENSE) para mais detalhes.
+Consulte o arquivo [LICENSE](./docs/LICENSE.md) para mais detalhes.
 
 ---
 

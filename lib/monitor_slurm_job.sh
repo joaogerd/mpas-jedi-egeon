@@ -1,4 +1,17 @@
 #!/bin/bash
+# ==============================================================================
+# Nome: monitor_slurm_job.sh
+#
+# Descrição:
+#   Monitora um job SLURM em tempo real até ele sair do estado PENDING.
+#   Envia notificações gráficas com `notify-send` (uso opcional).
+#
+# Uso:
+#   ./monitor_slurm_job.sh <JOBID>
+#
+# Autor:
+#   João Gerd Zell de Mattos - 2025
+# ==============================================================================
 
 # Verifica se o job ID foi passado
 if [ $# -ne 1 ]; then
