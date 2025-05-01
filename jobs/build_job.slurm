@@ -4,8 +4,6 @@
 #SBATCH --nodes=1                  # build is not MPI-distributed; 1 node is enough
 #SBATCH --time=02:00:00            # wall-time limit (hh:mm:ss)
 #SBATCH --exclusive                # reserve full node to avoid I/O contention
-#SBATCH --output=logs/build_%j.out # stdout log (jobid in name)
-#SBATCH --error=logs/build_%j.err  # stderr log
 
 ###############################################################################
 # build_job.slurm – MPAS-JEDI compilation job
@@ -62,6 +60,9 @@ PRECISION="${4:-ON}"
 
 [[ -d "$BUILD_DIR" ]] || die "BUILD_DIR not found: $BUILD_DIR"
 [[ -d "$SPACK_DIR" ]] || die "SPACK_DIR not found: $SPACK_DIR"
+
+# Prevent accidental propagation of this script's positional parameters.
+set --
 
 # ---------------- environment ------------------------------------------------
 SECONDS=0

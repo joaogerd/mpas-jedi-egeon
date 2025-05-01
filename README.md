@@ -144,6 +144,8 @@ cmake_versions/CMakeLists_<versao>.txt
 
 ### 🛠️ Modos de Compilação
 
+> **Importante:** o MPAS-JEDI **só compila** no nó `egeon-login.cptec.inpe.br`. Executar qualquer script de build no *headnode* não é suportado e resulta em falhas ou degradação severa de desempenho.
+
 Este sistema oferece suporte a dois modos de compilação do MPAS-JEDI:
 
 - `slurm`: Submete a compilação como job SLURM, ideal para builds pesados.

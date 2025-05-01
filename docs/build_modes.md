@@ -2,6 +2,8 @@
 
 ## Modos de compilação
 
+> **Importante:** o MPAS-JEDI **só compila** no nó `egeon-login.cptec.inpe.br`. Executar qualquer script de build no *headnode* não é suportado e resulta em falhas ou degradação severa de desempenho.
+
 Este sistema oferece dois modos de compilação:
 
 - `slurm`: Utiliza SLURM para compilar em um nó de computação.

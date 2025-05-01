@@ -65,7 +65,7 @@ usage() {
 
 log() { printf '[%s] %s\n' "$(date +'%Y-%m-%d %H:%M:%S')" "$*"; }
 die() { printf '[%(%F %T)T] [ERROR] %s\n' -1 "$*" >&2; exit 1; }
-trap 'log "ERROR: line $LINENO – exiting."; exit 2' ERR
+trap 'log "[ERROR] line $LINENO – exiting."; exit 2' ERR
 
 # ------------ defaults -------------------------------------------------------
 COMPILER=gnu
@@ -85,6 +85,9 @@ while getopts ":s:b:e:c:p:m:h" opt; do
   esac
 done
 
+# Prevent accidental propagation of this script's positional parameters.
+set --
+
 # ------------ required argument checks ----------------------------------------
 [[ -z "${SCRIPT_DIR:-}" || -z "${BUILD_DIR:-}" || -z "${SPACK_DIR:-}" ]] && usage
 
@@ -100,24 +103,33 @@ esac
 # ------------ LOCAL MODE -----------------------------------------------------
 if [[ "$MODE" == "local" ]]; then
   [[ -x "$SCRIPT_DIR/lib/build_local.sh" ]] || die "build_local.sh not executable."
-  log "[LOCAL] Building via build_local.sh …"
-  "$SCRIPT_DIR/lib/build_local.sh" "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION"
-  log "[LOCAL] Build done. Running ctest …"
+  log "[INFO] Building via build_local.sh …"
+  $SCRIPT_DIR/lib/build_local.sh "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION"
+  log "[INFO] Build done. Running ctest …"
   (
     cd "$BUILD_DIR"
     ctest --output-on-failure 2>&1 | tee "$BUILD_DIR/ctest_local.log"
   )
-  log "[LOCAL] ctest finished. Log: $BUILD_DIR/ctest_local.log"
+  log "[INFO] ctest finished. Log: $BUILD_DIR/ctest_local.log"
   exit 0
 fi
 
 # ------------ SLURM MODE -----------------------------------------------------
 [[ -d "$SCRIPT_DIR/jobs" ]] || die "jobs/ directory missing in $SCRIPT_DIR"
-mkdir -p "$BUILD_DIR/logs" || true
 
+# Logs directory inside build tree
+TODAY=$(date +%F)
+LOG_DIR="$BUILD_DIR/logs/$TODAY"
+mkdir -p "$LOG_DIR" || true
+
+# SLURM output and error logs will go to $BUILD_DIR/logs/$TODAY
 log "[SLURM] Submitting build_job.slurm …"
-BUILD_JOB_ID=$(sbatch --parsable "$SCRIPT_DIR/jobs/build_job.slurm" \
-                            "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION")
+BUILD_JOB_ID=$(sbatch --parsable \
+                      --output="$LOG_DIR/build_%j.out" \
+                      --error="$LOG_DIR/build_%j.err" \
+                      "$SCRIPT_DIR/jobs/build_job.slurm" \
+                      "$BUILD_DIR" "$SPACK_DIR" "$COMPILER" "$PRECISION")
+                            
 [[ -n "$BUILD_JOB_ID" ]] || die "sbatch returned empty job ID."
 log "[SLURM] BUILD job id = $BUILD_JOB_ID"
 
@@ -126,9 +138,13 @@ STATE=$(sacct -j "$BUILD_JOB_ID" --format=State%20 --noheader | head -n1 | awk '
 [[ -z "$STATE" ]] && die "BUILD job $BUILD_JOB_ID not visible via sacct."
 [[ "$STATE" == FAILED* || "$STATE" == CANCELLED* ]] && die "BUILD job already $STATE"
 
+# SLURM output and error logs will go to $BUILD_DIR/logs/$TODAY
 log "[SLURM] Submitting ctest_job.slurm (afterok:$BUILD_JOB_ID) …"
 CTEST_JOB_ID=$(sbatch --dependency=afterok:$BUILD_JOB_ID \
-                          "$SCRIPT_DIR/jobs/ctest_job.slurm" "$BUILD_DIR" "$SPACK_DIR")
+                      --output="$LOG_DIR/ctest_%j.out" \
+                      --error="$LOG_DIR/ctest_%j.err" \
+                      "$SCRIPT_DIR/jobs/ctest_job.slurm" "$BUILD_DIR" "$SPACK_DIR")
+                      
 [[ -n "$CTEST_JOB_ID" ]] || die "Failed to submit ctest job."
 log "[SLURM] CTEST job id = $CTEST_JOB_ID (depends on build)"
 log "[SLURM] Track jobs with: squeue -j $BUILD_JOB_ID,$CTEST_JOB_ID"

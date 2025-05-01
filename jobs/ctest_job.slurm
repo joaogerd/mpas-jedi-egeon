@@ -4,8 +4,6 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=32                # parallel test threads
 #SBATCH --time=01:00:00
-#SBATCH --output=logs/ctest_%j.out
-#SBATCH --error=logs/ctest_%j.err
 
 ###############################################################################
 # ctest_job.slurm – run MPAS-JEDI unit/integration tests
@@ -50,8 +48,12 @@ trap 'log "ERROR: line $LINENO – exiting."; exit 2' ERR
 # ---------------- args -------------------------------------------------------
 BUILD_DIR="${1:?BUILD_DIR missing}"
 SPACK_DIR="${2:?SPACK_DIR missing}"
+
 [[ -d "$BUILD_DIR" ]] || die "BUILD_DIR not found: $BUILD_DIR"
 [[ -d "$SPACK_DIR" ]] || die "SPACK_DIR not found: $SPACK_DIR"
+
+# Prevent accidental propagation of this script's positional parameters.
+set --
 
 # ---------------- environment ------------------------------------------------
 SECONDS=0

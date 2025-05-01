@@ -38,22 +38,25 @@ set -Eeuo pipefail
 
 # -------- helper -------------------------------------------------------------
 log() { printf '[%s] %s\n' "$(date +'%Y-%m-%d %H:%M:%S')" "$*"; }
-die() { log "ERROR: $*" ; exit 1; }
-trap 'log "ERROR: line $LINENO – exiting."; exit 2' ERR
+die() { printf '[%(%F %T)T] [ERROR] %s\n' -1 "$*" >&2; exit 1; }
+trap 'log "[ERROR] line $LINENO – exiting."; exit 2' ERR
 
 # -------- arguments ----------------------------------------------------------
 BUILD_DIR="${1:?BUILD_DIR missing}"
 SPACK_DIR="${2:?SPACK_DIR missing}"
 COMPILER="${3:-gnu}"
 PRECISION="${4:-ON}"
+# Prevent accidental propagation of this script's positional parameters.
+set --
 
 [[ -d "$BUILD_DIR" ]] || die "BUILD_DIR not found: $BUILD_DIR"
 [[ -d "$SPACK_DIR" ]] || die "SPACK_DIR not found: $SPACK_DIR"
 
-log "Local build started (compiler=$COMPILER, precision=$PRECISION)"
-log "BUILD_DIR = $BUILD_DIR"
+log "[INFO] Local build started (compiler=$COMPILER, precision=$PRECISION)"
+log "[INFO] BUILD_DIR = $BUILD_DIR"
 
-# -------- environment --------------------------------------------------------
+# -------- Spack environment --------------------------------------------------
+log "[INFO] Activating Spack environment..."
 source "$SPACK_DIR/start_spack_bundle.sh"
 
 # -------- thread cap ---------------------------------------------------------

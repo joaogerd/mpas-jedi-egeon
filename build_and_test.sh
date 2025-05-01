@@ -21,12 +21,13 @@
 #
 # USAGE
 # -----
-#   ./build_and_test.sh [-v <VERSION>] [-m <MODE>] [-p <ON|OFF>] [-h]
+#   ./build_and_test.sh [-v <VERSION>] [-m <MODE>] [-p <ON|OFF>] [--no-cmake] [-h]
 #
 # Options
-#   -v VERSION   mpas‑bundle release tag or branch (default: 3.0.0)
+#   -v VERSION   mpas-bundle release tag or branch (default: 3.0.0)
 #   -m MODE      'local' (default) or 'slurm'
 #   -p PRECISION Build with double precision (ON) or single (OFF). Default: ON
+#   --no-cmake   Skip the cmake configuration step
 #   -h           show this help and exit
 #
 # Examples
@@ -45,6 +46,7 @@
 #
 # CHANGELOG
 # ---------
+# - 2025-04-24: added die() function, --no-cmake option, and unified logging format.
 # - 2025-04-23: full refactor, getopt parsing, robust logging, pipefail,
 #               JOBSTAMP instead of undefined JOBID, Markdown header.
 #
@@ -69,27 +71,40 @@ usage() {
 
 log() { printf '[%s] %s\n' "$(date +'%Y-%m-%d %H:%M:%S')" "$*"; }
 die() { printf '[%(%F %T)T] [ERROR] %s\n' -1 "$*" >&2; exit 1; }
-trap 'log "ERROR: line $LINENO – exiting."; exit 2' ERR
+trap 'log "[ERROR] line $LINENO – exiting."; exit 2' ERR
+
+# --- host sanity-check (only egeon-login is allowed) -------------------------
+LOGIN_HOST="egeon-login.cptec.inpe.br"
+CUR_HOST=$(hostname)
+
+if [[ "$CUR_HOST" != "$LOGIN_HOST" ]]; then
+  die " This script must be run on $LOGIN_HOST (current: $CUR_HOST)."
+fi
 
 # ------------ defaults -------------------------------------------------------
 VERSION='3.0.0'
 MODE='local'
 PRECISION='ON'
+RUN_CMAKE=true
 
 # -------- option parsing -----------------------------------------------------
-while getopts ':v:m:p:h' flag; do
-  case "$flag" in
-    v) VERSION="$OPTARG"   ;;
-    m) MODE="$OPTARG"      ;;
-    p) PRECISION="$OPTARG" ;;
-    h|*) usage ;;
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -v) VERSION="$2"; shift 2 ;;
+    -m) MODE="$2"; shift 2 ;;
+    -p) PRECISION="$2"; shift 2 ;;
+    --no-cmake) RUN_CMAKE=false; shift ;;
+    -h|--help) usage ;;
+    *) usage ;;
   esac
 done
-shift $((OPTIND - 1))
 
 if [[ "$MODE" != "slurm" && "$MODE" != "local" ]]; then
   die "Invalid mode: '$MODE'. Use 'slurm' or 'local'."
 fi
+
+# Prevent accidental propagation of this script's positional parameters.
+set --
 
 # -------- constants & paths --------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -98,12 +113,13 @@ CMAKE_FILE="$SCRIPT_DIR/cmake_versions/CMakeLists_${VERSION}.txt"
 
 if [[ ! -f "$CMAKE_FILE" ]]; then
   die "CMakeLists for version '$VERSION' not found: $CMAKE_FILE\nHint: did you run sync_cmakelists.sh?"
- fi
+fi
 
 JOBSTAMP="$(date +'%Y%m%dT%H%M%S')"
 SNAPSHOT_DATE="$(date +'%Y-%m-%d')"
-BASE_DIR="$SCRIPT_DIR/mpas-bundle"
-BUILD_DIR="$BASE_DIR/build-${VERSION}-${SNAPSHOT_DATE}"
+BASE_DIR="$SCRIPT_DIR/mpas-bundle-${VERSION}"
+#BUILD_DIR="$BASE_DIR/build-${VERSION}-${SNAPSHOT_DATE}"
+BUILD_DIR="$BASE_DIR/build"
 LOG_DIR="$BUILD_DIR/logs/$SNAPSHOT_DATE"
 
 mkdir -p "$BUILD_DIR" "$LOG_DIR"
@@ -116,16 +132,20 @@ log "Activating Spack environment..."
 source "$SPACK_DIR/start_spack_bundle.sh"
 
 # -------- CMake configure ----------------------------------------------------
-log "Running CMake... (precision=$PRECISION, noreomote=ON)"
-(
-  cd "$BUILD_DIR"
-  cmake .. \
-    -DMPAS_DOUBLE_PRECISION="$PRECISION" \
-    -DMPAS_BUNDLE_NOREMOTE=ON \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_VERBOSE_MAKEFILE=ON \
-    2>&1 | tee "$LOG_DIR/cmake_${JOBSTAMP}.log"
-)
+if [[ "$RUN_CMAKE" == true ]]; then
+  log "Running CMake... (precision=$PRECISION, noreomote=ON)"
+  (
+    cd "$BUILD_DIR"
+    cmake .. \
+      -DMPAS_DOUBLE_PRECISION="$PRECISION" \
+      -DMPAS_BUNDLE_NOREMOTE=ON \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_VERBOSE_MAKEFILE=ON \
+      2>&1 | tee "$LOG_DIR/cmake_${JOBSTAMP}.log"
+  )
+else
+  log "Skipping CMake configuration step (--no-cmake used)"
+fi
 
 # -------- Build & Test pipeline ----------------------------------------------
 log "Dispatching build/tests ($MODE mode)..."
